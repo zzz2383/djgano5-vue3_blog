@@ -44,7 +44,7 @@ Django + Vue3 全栈博客系统
 
 📁 项目结构
 
-
+```
 blog_djagno5+vue3/
 ├── blog_backend/              # Django 后端
 │   ├── blog_backend/            # 博客应用
@@ -69,7 +69,7 @@ blog_djagno5+vue3/
 │
 └── README.md
 
-
+```
 🚀 快速开始
 
 环境要求
@@ -125,6 +125,7 @@ npm run build
 
 1. 根据需要修改数据库配置，默认用户与密码都为root
 2. 已经设置默认后端基础URL  http://localhost:8000
+3. 浏览http://localhost:8000/swagger/查看接口
 
 前端配置
 
@@ -153,7 +154,7 @@ npm run build
 🔄 数据模型
 
 User
-
+```
 username（用户名）
 email（邮箱）
 password（密码）
@@ -168,9 +169,9 @@ bio（个人简介）
 avatar（头像）
 created_at（创建时间）
 updated_at（更新时间）
-
+```
 Article
-
+```
 title（标题）
 slug（URL标识）
 content（内容）
@@ -180,18 +181,18 @@ created_at（创建时间）
 updated_at（更新时间）
 is_published（是否发布）
 cover_image（封面图）
-
+```
 Comment
-
+```
 content（评论内容）
 author（评论作者）
 article（关联文章）
 created_at（创建时间）
 updated_at（更新时间）
 is_active（是否发布）
-
+```
 📁 数据库设计
-
+```
 -- 简化版数据库关系
 users
 ├── id
@@ -212,7 +213,7 @@ comments
 ├── author (FK -> users.id)
 ├── article (FK -> articles.id)
 └── created_at
-
+```
 
 🎨 前端技术栈
 
