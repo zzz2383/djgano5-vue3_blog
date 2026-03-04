@@ -125,7 +125,7 @@ npm run build
 
 1. 根据需要修改数据库配置，默认用户与密码都为root
 2. 已经设置默认后端基础URL  http://localhost:8000
-3. 浏览http://localhost:8000/swagger/  查看接口
+3. 浏览http://localhost:8000/swagger/  查看API接口
 
 前端配置
 
