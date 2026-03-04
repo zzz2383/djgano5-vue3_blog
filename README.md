@@ -89,7 +89,7 @@ cd blog_djagno5+vue3/backend
 # 创建虚拟环境
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
-# 或 venv\Scripts\activate  # Windows
+venv\Scripts\activate    # Windos
 
 # 安装依赖
 pip install -r requirements.txt
