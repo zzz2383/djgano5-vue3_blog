@@ -179,7 +179,7 @@ const handleSubmit = async () => {
 
         // 5. 处理成功结果
         ElMessage.success('文章创建成功')
-        router.push(`/articles/${response.id}`) // 跳转到文章详情页
+        router.push('/') // 跳转到文章详情页
 
     } catch (error: any) {
         // 6. 错误处理
