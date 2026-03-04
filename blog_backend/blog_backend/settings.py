@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',  # DRF
     'rest_framework_simplejwt',  # SimpleJWT
     'corsheaders',  # 跨域支持
+    'drf_yasg',     # API文档
     #app
     'users',
     'articles',
@@ -87,7 +88,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'blog_django5+vue3',      # 数据库名
         'USER': 'root',     # MySQL 用户名
-        'PASSWORD': 'root',  # MySQL 密码
+        'PASSWORD': 'A52951718',  # MySQL 密码
         'HOST': 'localhost',               # 数据库服务器地址（默认本地）
         'PORT': '3306',                    # MySQL 默认端口
     }
