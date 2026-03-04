@@ -38,12 +38,27 @@ class ArticlePost(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        重写save方法，在保存前自动生成slug
-        如果slug为空，则使用标题生成slug
+        重写save方法，在保存前自动生成唯一slug
         """
+        import uuid
+
+        # 如果slug为空，从标题生成基本slug
         if not self.slug:
-            self.slug = slugify(self.title)  # 使用slugify将标题转换为URL友好的格式
-        super().save(*args, **kwargs)  # 调用父类的save方法完成保存
+            base_slug = slugify(self.title)
+            if not base_slug:  # 防止标题为空的情况
+                base_slug = 'article'
+            self.slug = base_slug
+
+        # 确保slug唯一
+        original_slug = self.slug
+        counter = 1
+        while ArticlePost.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
+            # 如果slug已存在，添加随机后缀
+            random_suffix = uuid.uuid4().hex[:4]  # 4位随机字符
+            self.slug = f"{original_slug}-{random_suffix}"
+            counter += 1
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         """
@@ -56,4 +71,3 @@ class ArticlePost(models.Model):
         ordering = ['-created_at']
         verbose_name = '文章'
         verbose_name_plural = verbose_name
-

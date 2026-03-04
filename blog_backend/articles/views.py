@@ -48,5 +48,3 @@ class ArticlePostViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return ArticlePostCreateSerializer  # 创建时使用专用序列化器
         return super().get_serializer_class()  # 其他情况使用默认序列化器
-
-
