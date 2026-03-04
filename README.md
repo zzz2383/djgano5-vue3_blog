@@ -128,7 +128,7 @@ npm run build
 
 前端配置
 
-1. 在api中已经设置默认后端基础URL  http://localhost:8000/api
+1. 在api中已经设置默认后端基础URL  http://localhost:8000
 
 
 主要 API 端点
