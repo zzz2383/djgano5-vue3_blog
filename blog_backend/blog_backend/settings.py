@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -142,3 +143,6 @@ SIMPLE_JWT = {
 
 # 浏览器url的后端的基本路径
 BASE_URL = 'http://localhost:8000/'
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # 通常放在项目根目录下的media文件夹
+MEDIA_URL = '/media/'  # 存放媒体文件的路径，图片，视频等
