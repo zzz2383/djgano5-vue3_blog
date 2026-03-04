@@ -14,9 +14,10 @@
                         <!-- 文章元信息 -->
                         <div class="article-meta">
                             <!-- 作者信息 -->
-                            <div class="author-avatar-name" @click="goToAuthorProfile">
+                            <div class="author-avatar-name"
+                                @click="goToAuthorProfile(articleStore.currentArticle.author?.id ?? 0)">
                                 <span>作者:</span>
-                                <img v-if="articleStore.currentArticle.author?.avatar" :src="articleStore.currentArticle.author?.avatar" class="avatar">
+                                <img :src="articleStore.currentArticle.author?.avatar" class="avatar">
                                 <span class="author-name">{{ articleStore.currentArticle.author?.username }}</span>
                             </div>
 
@@ -30,7 +31,7 @@
                             </el-tag>
                         </div>
 
-                        <!-- 操作按钮（仅作者可见） -->
+                        <!-- 操作按钮（仅作者可见) -->
                         <div class="article-actions">
                             <el-button type="primary" @click="router.push(`/`)">
                                 首页
@@ -71,33 +72,58 @@
                 <!-- 评论区块 -->
                 <div class="comment-section">
                     <div class="section-divider"></div>
-                    <h3 class="section-title">评论</h3>
+                    <h3 class="section-title">评论 ({{ commentStore.comments.length }})</h3>
 
-                    <!-- 发表评论区域 -->
-                    <div class="comment-input-area">
-                        <el-input v-model="commentContent" :rows="3" type="textarea" placeholder="写下你的评论..."
-                            resize="none" class="comment-input" />
-                        <el-button type="primary" @click="submitComment" class="submit-comment-btn"
-                            :disabled="!commentContent.trim()">
-                            发表评论
-                        </el-button>
+                    <!-- 发表评论表单 -->
+                    <el-form v-if="authStore.isAuthenticated" :model="commentForm" :rules="commentRules"
+                        ref="commentFormRef" @submit.prevent="submitComment" class="comment-form">
+                        <el-form-item prop="content">
+                            <el-input v-model="commentForm.content" :rows="3" type="textarea" placeholder="写下你的评论..."
+                                resize="none" class="comment-input" />
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" native-type="submit" class="submit-comment-btn"
+                                :loading="isSubmitting">
+                                发表评论
+                            </el-button>
+                        </el-form-item>
+                    </el-form>
+                    <div v-else class="login-prompt">
+                        请<el-button type="text" @click="router.push('/login')">登录</el-button>后发表评论
                     </div>
 
                     <!-- 评论列表 -->
                     <div class="comment-list">
-                        <div class="comment-item" v-for="comment in comments" :key="comment.id">
+                        <div class="comment-item" v-for="comment in commentStore.comments" :key="comment.id">
                             <div class="comment-header">
-                                <img :src="comment.author.avatar" class="comment-avatar">
-                                <span class="comment-author">{{ comment.author.username }}</span>
+                                <div class="comment-author-info" @click="goToAuthorProfile(comment.author.id)">
+                                    <img :src="comment.author.avatar" class="comment-avatar">
+                                    <span class="comment-author">{{ comment.author.username }}</span>
+                                </div>
                                 <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+                                <el-button v-if="canDeleteComment(comment)" type="text" size="small"
+                                    @click="deleteComment(comment.id)"
+                                    :loading="commentStore.deletingCommentId === comment.id">
+                                    删除
+                                </el-button>
                             </div>
                             <div class="comment-content">
                                 {{ comment.content }}
                             </div>
                         </div>
 
-                        <div class="no-comments" v-if="comments.length === 0">
+                        <div class="no-comments" v-if="!commentStore.isLoading && commentStore.comments.length === 0">
                             暂无评论，快来发表第一条评论吧~
+                        </div>
+
+                        <div class="loading-comments" v-if="commentStore.isLoading">
+                            <el-skeleton :rows="2" animated />
+                        </div>
+
+                        <div class="load-more" v-if="commentStore.hasMoreComments && !commentStore.isLoading">
+                            <el-button type="text" @click="loadMoreComments" :loading="commentStore.isLoadingMore">
+                                加载更多评论
+                            </el-button>
                         </div>
                     </div>
                 </div>
@@ -110,221 +136,141 @@
 </template>
 
 <script setup lang="ts">
-/**
- * 文章详情页组件 - 带详细注释版本
- * 功能：展示文章详情、评论列表，支持发表评论等操作
- */
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { MdPreview } from 'md-editor-v3'
+import 'md-editor-v3/lib/style.css'
+import { useArticleStore } from '../stores/article'
+import { useAuthStore } from '../stores/auth'
+import { useCommentStore } from '../stores/comment'
+import type { Comment } from '../types/comment'
 
-// ============== 导入部分 ==============
-// Vue 相关导入
-import { computed, onMounted, ref } from 'vue' // Vue 组合式 API
-import { useRoute, useRouter } from 'vue-router' // Vue Router 相关
+const route = useRoute()
+const router = useRouter()
+const articleStore = useArticleStore()
+const authStore = useAuthStore()
+const commentStore = useCommentStore()
 
-// 第三方组件导入
-import { ElMessage } from 'element-plus' // Element Plus 消息提示组件
-import { MdPreview } from 'md-editor-v3' // Markdown 预览组件
-import 'md-editor-v3/lib/style.css' // Markdown 编辑器样式
+// 评论表单相关
+const commentFormRef = ref<FormInstance>()
+const commentForm = ref({
+    content: '',
+    article: Number(route.params.id)
+})
 
-// 状态管理导入
-import { useArticleStore } from '../stores/article' // 文章状态管理
-import { useAuthStore } from '../stores/auth' // 认证状态管理
+const commentRules = ref<FormRules>({
+    content: [
+        { required: true, message: '请输入评论内容', trigger: 'blur' },
+        { min: 5, max: 1000, message: '评论长度在5到1000个字符之间', trigger: 'blur' }
+    ]
+})
 
-// ============== 初始化部分 ==============
-// 初始化 Vue Router 相关
-const route = useRoute() // 当前路由信息对象，包含 params、query 等
-const router = useRouter() // 路由实例，用于编程式导航
+// 评论提交状态
+const isSubmitting = ref(false)
 
-// 初始化 Pinia 状态管理
-const articleStore = useArticleStore() // 文章相关状态管理
-const authStore = useAuthStore() // 认证相关状态管理
+// 计算属性
+const isAuthor = computed(() => {
+    const userId = authStore.user?.id
+    const authorId = articleStore.currentArticle?.author?.id
+    return userId && authorId && String(userId) === String(authorId)
+})
 
-// ============== 组件状态定义 ==============
-// 评论内容（使用 ref 创建响应式变量）
-const commentContent = ref('')
-
-// 评论列表（模拟数据）
-const comments = ref([
-    {
-        id: 1, // 评论ID
-        content: '这篇文章写得很好，对我帮助很大！', // 评论内容
-        created_at: '2023-05-15T10:30:00Z', // 创建时间
-        author: { // 评论作者信息
-            id: 2, // 作者ID
-            username: '评论用户1', // 用户名
-            avatar: 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png' // 头像
-        }
-    },
-    {
-        id: 2,
-        content: '感谢作者的分享，期待更多精彩内容！',
-        created_at: '2023-05-16T14:45:00Z',
-        author: {
-            id: 3,
-            username: '评论用户2',
-            avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
-        }
-    }
-])
-
-// ============== 工具函数 ==============
-/**
- * 格式化日期字符串
- * @param {string} dateString - ISO 格式的日期字符串
- * @returns {string} 格式化后的本地日期字符串
- * 
- * 示例：
- * 输入: '2023-05-15T10:30:00Z'
- * 输出: '2023/5/15 18:30:00' (根据本地时区)
- */
+// 方法
 const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
 }
 
-// ============== 计算属性 ==============
-/**
- * 判断当前用户是否是文章作者
- * @returns {boolean} 是否是作者
- * 
- * 逻辑说明：
- * 1. 获取当前登录用户ID和文章作者ID
- * 2. 如果任一ID不存在，返回false
- * 3. 比较两个ID是否相同（转换为字符串后比较，避免类型不一致问题）
- */
-const isAuthor = computed(() => {
-    const userId = authStore.user?.id // 当前用户ID（可能为undefined）
-    const authorId = articleStore.currentArticle?.author?.id // 文章作者ID（可能为undefined）
-
-    // 如果任一ID不存在，返回false
-    if (!userId || !authorId) return false
-
-    // 比较用户ID和作者ID（转换为字符串比较，避免类型不一致问题）
-    return String(userId) === String(authorId)
-})
-
-// ============== 操作方法 ==============
-/**
- * 处理删除文章操作
- * 
- * 流程：
- * 1. 检查当前文章是否存在且有ID
- * 2. 调用store的删除方法
- * 3. 删除成功后跳转到文章列表页
- * 4. 捕获并处理可能的错误
- */
 const handleDelete = async () => {
     try {
-        // 确保当前文章存在且有ID
         if (articleStore.currentArticle?.id) {
-            // 调用store的删除方法
             await articleStore.deleteArticle(articleStore.currentArticle.id)
-            // 删除成功后跳转到文章列表页
             router.push('/')
         }
     } catch (error) {
         console.error('删除文章失败:', error)
-        ElMessage.error('删除文章失败') // 显示错误提示
+        ElMessage.error('删除文章失败')
     }
 }
 
-/**
- * 跳转到作者个人资料页
- * 
- * 说明：
- * 根据文章作者的ID进行路由跳转
- */
-const goToAuthorProfile = () => {
-    // 检查文章作者ID是否存在
-    if (articleStore.currentArticle?.author?.id) {
-        // 跳转到作者个人资料页
-        router.push(`/profile/${articleStore.currentArticle?.author?.id}`)
+const goToAuthorProfile = (authorId: number) => {
+    if (authorId) {
+        router.push(`/profile/${authorId}`)
     }
 }
 
-/**
- * 处理图片点击事件
- * 
- * 当前仅打印日志，可根据需要扩展功能
- * 例如：打开图片预览、记录点击统计等
- */
 const handleImageClick = () => {
-    console.log('图片被点击') // 调试日志
-    // 可扩展功能：打开图片预览、记录点击统计等
+    console.log('图片被点击')
 }
 
-/**
- * 提交评论
- * 
- * 流程：
- * 1. 验证评论内容是否为空
- * 2. 检查用户是否已登录
- * 3. 创建新评论对象
- * 4. 添加到评论列表
- * 5. 清空评论输入框
- * 6. 显示成功提示
- */
-const submitComment = () => {
-    // 验证评论内容是否为空
-    if (!commentContent.value.trim()) {
-        ElMessage.warning('评论内容不能为空') // 显示警告提示
-        return
-    }
+const canDeleteComment = (comment: Comment) => {
+    return authStore.isAuthenticated &&
+        (authStore.user?.id === comment.author.id)
+}
 
-    // 检查用户是否已登录
-    if (!authStore.isAuthenticated) {
-        ElMessage.warning('请先登录后再发表评论') // 显示警告提示
-        router.push('/login') // 跳转到登录页
-        return
-    }
+const submitComment = async () => {
+    if (!commentFormRef.value) return
 
-    // 创建新评论对象（模拟数据）
-    const newComment = {
-        id: comments.value.length + 1, // 新评论ID（简单递增）
-        content: commentContent.value, // 评论内容
-        created_at: new Date().toISOString(), // 当前时间（ISO格式）
-        author: {
-            id: authStore.user?.id || 0, // 用户ID（默认为0）
-            username: authStore.user?.username || '匿名用户', // 用户名（默认为匿名）
-            avatar: authStore.user?.avatar || 'https://cube.elemecdn.com/9/c2/f0ee8a3c7c9638a54940382568c9dpng.png' // 默认头像
+    try {
+        await commentFormRef.value.validate()
+        isSubmitting.value = true
+
+        await commentStore.createComment(commentForm.value)
+        commentForm.value.content = ''
+        ElMessage.success('评论发表成功')
+    } catch (error: any) {
+        if (error.response?.status === 401) {
+            ElMessage.warning('请先登录后再发表评论')
+            router.push('/login')
+        } else if (error.response?.status === 400) {
+            // 处理字段验证错误
+            const errors = error.response.data
+            for (const field in errors) {
+                ElMessage.error(`${field}: ${errors[field].join(', ')}`)
+            }
+        } else if (error !== 'validate') {
+            console.error('发表评论失败:', error)
+            ElMessage.error('发表评论失败')
         }
+    } finally {
+        isSubmitting.value = false
     }
-
-    // 将新评论添加到评论列表开头
-    comments.value.unshift(newComment)
-    // 清空评论输入框
-    commentContent.value = ''
-    // 显示成功提示
-    ElMessage.success('评论发表成功')
 }
 
-// ============== 生命周期钩子 ==============
-/**
- * 组件挂载时执行的逻辑
- * 
- * 流程：
- * 1. 从路由参数中获取文章ID
- * 2. 如果ID存在，获取文章详情
- */
-onMounted(async () => {
-    // 从路由参数中获取文章ID（转换为数字）
-    const articleId = Number(route.params.id)
+const deleteComment = async (commentId: number) => {
+    try {
+        await commentStore.deleteComment(commentId)
+        ElMessage.success('评论删除成功')
+    } catch (error) {
+        console.error('删除评论失败:', error)
+        ElMessage.error('删除评论失败')
+    }
+}
 
-    // 如果ID存在，获取文章详情
+const loadMoreComments = async () => {
+    await commentStore.fetchComments(
+        Number(route.params.id),
+    )
+}
+
+// 生命周期钩子
+onMounted(async () => {
+    const articleId = Number(route.params.id)
     if (articleId) {
         await articleStore.fetchArticle(articleId)
+        await commentStore.fetchComments(articleId)
     }
 })
 </script>
 
-<!-- ============== 样式部分 ============== -->
 <style scoped>
-/* 文章详情容器 */
+/* 保持之前的样式不变 */
 .article-detail-container {
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* 文章头部样式 */
 .article-header {
     text-align: center;
     margin-bottom: 20px;
@@ -332,7 +278,6 @@ onMounted(async () => {
     border-bottom: 1px solid #eee;
 }
 
-/* 文章元信息样式 */
 .article-meta {
     display: flex;
     justify-content: center;
@@ -342,10 +287,8 @@ onMounted(async () => {
     color: #666;
     font-size: 14px;
     flex-wrap: wrap;
-    /* 允许在小屏幕上换行 */
 }
 
-/* 文章作者头像和名字容器 */
 .author-avatar-name {
     display: flex;
     align-items: center;
@@ -356,12 +299,10 @@ onMounted(async () => {
     border-radius: 4px;
 }
 
-/**作者信息悬浮样式 */
 .author-avatar-name:hover {
     background-color: #f5f5f5;
 }
 
-/* 作者头像样式 */
 .avatar {
     width: 32px;
     height: 32px;
@@ -370,38 +311,29 @@ onMounted(async () => {
     border: 1px solid #eee;
 }
 
-/**作者名字样式 */
 .author-name {
     font-weight: 500;
     color: #409eff;
 }
 
-/* 文章封面样式 */
 .article-cover {
     margin: 0 auto 30px;
     width: 100%;
     max-width: 800px;
-    /* 固定最大宽度 */
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    /* 隐藏超出部分 */
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
 }
 
-/* 封面图片样式 */
 .cover-image {
     width: 100%;
-    /* 宽度填充容器 */
     height: auto;
-    /* 高度自适应 */
     display: block;
-    /* 消除图片底部间隙 */
     transition: transform 0.3s ease;
 }
 
-/* 悬停效果 */
 .article-cover:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
@@ -411,7 +343,6 @@ onMounted(async () => {
     transform: scale(1.02);
 }
 
-/* 文章摘要样式 */
 .article-excerpt {
     margin-bottom: 30px;
     padding: 15px;
@@ -419,12 +350,10 @@ onMounted(async () => {
     border-left: 4px solid #409eff;
 }
 
-/* 文章内容样式 */
 .article-content {
     margin-top: 30px;
 }
 
-/* 操作按钮区域样式 */
 .article-actions {
     margin-top: 30px;
     display: flex;
@@ -434,7 +363,6 @@ onMounted(async () => {
     border-top: 1px solid #eee;
 }
 
-/* 新增的分割线样式 */
 .section-divider {
     height: 1px;
     background: linear-gradient(to right, transparent, #ddd, transparent);
@@ -449,25 +377,25 @@ onMounted(async () => {
     border-bottom: 1px solid #eee;
 }
 
-/* 评论区块样式 */
 .comment-section {
     margin-top: 40px;
 }
 
-.comment-input-area {
-    display: flex;
-    gap: 15px;
+.comment-form {
     margin-bottom: 30px;
 }
 
 .comment-input {
-    flex: 1;
+    margin-bottom: 15px;
 }
 
 .submit-comment-btn {
-    align-self: flex-end;
-    height: 84px;
-    /* 与输入框高度一致 */
+    width: 120px;
+}
+
+.login-prompt {
+    margin-bottom: 30px;
+    color: #666;
 }
 
 .comment-list {
@@ -483,6 +411,19 @@ onMounted(async () => {
     display: flex;
     align-items: center;
     margin-bottom: 10px;
+}
+
+.comment-author-info {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.comment-author-info:hover {
+    background-color: #f5f5f5;
 }
 
 .comment-avatar {
@@ -515,7 +456,15 @@ onMounted(async () => {
     padding: 30px 0;
 }
 
-/* 响应式调整 */
+.loading-comments {
+    padding: 20px 0;
+}
+
+.load-more {
+    text-align: center;
+    margin-top: 20px;
+}
+
 @media (max-width: 768px) {
     .article-cover {
         margin: 20px 0;
@@ -530,13 +479,11 @@ onMounted(async () => {
         font-size: 1.3rem;
     }
 
-    .comment-input-area {
+    .comment-form {
         flex-direction: column;
     }
 
     .submit-comment-btn {
-        align-self: flex-end;
-        height: auto;
         width: 100%;
     }
 }
