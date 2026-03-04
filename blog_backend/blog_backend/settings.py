@@ -29,9 +29,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,11 +37,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     # 第三方应用
     'rest_framework',  # DRF
     'rest_framework_simplejwt',  # SimpleJWT
     'corsheaders',  # 跨域支持
+    #app
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -84,7 +83,7 @@ WSGI_APPLICATION = "blog_backend.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'demo_blog',      # 数据库名
+        'NAME': 'blog_django5+vue3',      # 数据库名
         'USER': 'root',     # MySQL 用户名
         'PASSWORD': 'A52951718',  # MySQL 密码
         'HOST': 'localhost',               # 数据库服务器地址（默认本地）
@@ -150,3 +149,5 @@ BASE_URL = 'http://localhost:8000/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # 通常放在项目根目录下的media文件夹
 MEDIA_URL = '/media/'  # 存放媒体文件的路径，图片，视频等
+
+AUTH_USER_MODEL = 'users.User'#用自己的用户模板
