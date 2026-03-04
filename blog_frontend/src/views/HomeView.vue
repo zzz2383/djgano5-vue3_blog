@@ -6,14 +6,22 @@
             <!-- 顶部导航栏 -->
             <el-header>
                 <div class="header-content">
-                    <!-- logo图片地址 -->
-                    <img src="../assets/images/logo.jpg" alt="Logo" class="logo" /> <!-- 网站Logo -->
-                    <el-breadcrumb separator="/">
-                        <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-                        <el-breadcrumb-item :to="{ path: '/articles/create' }">发布文章</el-breadcrumb-item>
-                        <el-breadcrumb-item :to="{ path: '/myarticles' }">我的文章</el-breadcrumb-item>
-                        <el-breadcrumb-item></el-breadcrumb-item>
-                    </el-breadcrumb>
+                    <img src="../assets/images/logo.jpg" alt="Logo" class="logo" />
+                    <el-space :size="20" spacer="|">
+                        <el-link underline="hover" href="/">首页</el-link>
+                        <el-link underline="hover" href="/articles/create">发布文章</el-link>
+                        <el-link underline="hover" href="/myarticles">我的文章</el-link>
+                    </el-space>
+
+                    <!-- 搜索框 -->
+                    <div class="search-container">
+                        <el-input v-model="searchQuery" placeholder="搜索文章..." clearable @clear="handleSearchClear"
+                            @keyup.enter="handleSearch" class="search-input">
+                            <template #append>
+                                <el-button :icon="Search" @click="handleSearch" />
+                            </template>
+                        </el-input>
+                    </div>
 
                     <!-- 用户信息区域 -->
                     <div class="user-info" v-if="authStore.isAuthenticated">
@@ -44,12 +52,17 @@
             <el-main>
                 <!-- 用户欢迎信息 -->
                 <span class="welcome-message">
-                    <h1>欢迎，{{ username }}</h1><!-- 动态显示用户名 -->
+                    <h1>欢迎，{{ username }}</h1>
                 </span>
                 <el-divider />
-                <!-- 使用 router-view 嵌入 posts 视图 -->
-                <ArticleListView v-if="$route.name === 'Articles'" />
-                <MyArticleListView v-else-if="$route.name === 'Myarticles'" />
+
+                <!-- 使用ArticleListView组件并根据路由传递不同参数 -->
+                <!--检查当前路由名称($route.name)是否为 'Myarticles'-->
+                <!--如果是，传递 'myArticles'模式（显示当前用户的文章）-->
+                <!--
+如果不是，传递 'published'模式（显示所有已发布的文章）-->
+                <ArticleListView :mode="$route.name === 'Myarticles' ? 'myArticles' : 'published'"
+                    :search-query="searchQuery" />
             </el-main>
 
             <!-- 底部信息栏 -->
@@ -61,90 +74,94 @@
 </template>
 
 <script setup lang="ts">
-// 导入Vue相关API
-import { computed, onMounted } from 'vue'
-// 导入路由相关
-import { useRouter } from 'vue-router'
-// 导入Element Plus组件
+// ============== 导入部分 ==============
+import { computed, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-// 导入Pinia存储
+import { Search } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import ArticleListView from './ArticleListView.vue'
 
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
 
+// ============== 搜索相关状态 ==============
+const searchQuery = ref('') // 搜索关键词
 
-// ========== 初始化实例 ==========
-const router = useRouter()          // 路由实例
-const authStore = useAuthStore()    // 认证存储实例
+// 初始化时检查路由中的搜索参数
+if (route.query.search) {
+    searchQuery.value = route.query.search as string
+}
 
-// 初始化认证状态
-onMounted(() => {
-    console.log('初始化认证状态...')
-    authStore.initialize()
-    console.log('当前用户:', authStore.user)
-})
-
-// ========== 计算属性 ==========
-// 获取当前用户名（未登录显示"未登录"）
+// ============== 计算属性 ==============
 const username = computed(() => authStore.user?.username || '未登录')
+const userAvatar = computed(() => authStore.user?.avatar)
 
-// 获取用户头像，如果没有则使用默认头像
-const userAvatar = computed(() => {
-    return authStore.user?.avatar
-})
+// ============== 方法定义 ==============
+/**
+ * 处理搜索操作
+ */
+const handleSearch = () => {
+    if (searchQuery.value.trim()) {
+        // 更新路由查询参数
+        router.push({
+            query: { ...route.query, search: searchQuery.value }
+        })
+    } else {
+        ElMessage.warning('请输入搜索关键词')
+    }
+}
 
-// ========== 方法定义 ==========
+/**
+ * 处理搜索清除操作
+ */
+const handleSearchClear = () => {
+    searchQuery.value = ''
+    const query = { ...route.query }
+    delete query.search
+    router.push({ query })
+}
+
 /**
  * 处理退出登录逻辑
  */
 const handleLogout = async () => {
     try {
-        // 1. 显示确认对话框
         await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
-            type: 'warning'  // 警告类型
+            type: 'warning'
         })
 
-        // 2. 调用认证存储的logout方法
         await authStore.logout()
-
-        // 3. 显示成功消息
         ElMessage.success('退出成功')
-
-        // 4. 跳转到登录页
         router.push('/')
     } catch (error: any) {
-        // 5. 错误处理（排除用户取消的情况）
         if (error !== 'cancel') {
             ElMessage.error('退出失败')
         }
     }
 }
 
+/**
+ * 跳转到作者个人资料页
+ */
 const goToAuthorProfile = () => {
     if (authStore.user?.id) {
         router.push(`/profile/${authStore.user?.id}`)
     }
 }
-
 </script>
 
 <style scoped>
-/* 
- * 定义CSS变量控制主题颜色
- * 便于统一管理和修改
- */
+/* CSS变量定义 */
 .common-layout {
     --header-footer-bg: #000000;
-    /* 头部/底部背景色 - 黑色 */
     --header-link-color: #2db5e6;
-    /* 头部链接默认颜色 - 浅蓝色 */
     --header-link-hover: #157db4;
-    /* 头部链接悬停颜色 - 深蓝色 */
     --main-bg: #ffffff;
-    /* 主内容区背景色 - 纯白 */
     --main-text: #333333;
-    /* 主内容区文字色 - 深灰 */
 
     position: fixed;
     top: 0;
@@ -184,26 +201,34 @@ const goToAuthorProfile = () => {
     margin-right: 50px;
 }
 
-
-/* 面包屑导航样式 */
-.el-breadcrumb {
-    font-size: 16px;
-}
-
-.el-breadcrumb :deep(.el-breadcrumb__inner) {
+.el-header .el-link {
     color: var(--header-link-color) !important;
+    font-size: 16px;
     transition: color 0.3s ease;
 }
 
-.el-breadcrumb :deep(.el-breadcrumb__inner:hover) {
+.el-header .el-link:hover {
     color: var(--header-link-hover) !important;
-    text-decoration: none;
 }
 
-.el-breadcrumb :deep(.el-breadcrumb__separator) {
+.el-header .el-space__spacer {
     color: var(--header-link-color) !important;
 }
 
+/* 搜索框样式 */
+.search-container {
+    flex: 1;
+    max-width: 400px;
+    margin: 0 30px;
+}
+
+.search-input {
+    transition: all 0.3s ease;
+}
+
+.search-input:focus-within {
+    box-shadow: 0 0 0 2px rgba(45, 181, 230, 0.2);
+}
 
 /* 用户信息区域样式 */
 .user-info {
@@ -259,5 +284,41 @@ const goToAuthorProfile = () => {
     justify-content: center;
     font-size: 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 992px) {
+    .header-content {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .search-container {
+        order: 3;
+        width: 100%;
+        max-width: 100%;
+        margin: 10px 0 0 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .el-header {
+        height: auto;
+        padding: 15px;
+    }
+
+    .logo {
+        margin-right: 20px;
+    }
+
+    .el-space {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .el-space__spacer {
+        display: none;
+    }
 }
 </style>

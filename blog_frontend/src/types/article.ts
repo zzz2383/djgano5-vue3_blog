@@ -1,6 +1,7 @@
 export interface Author {
     id: number
     username: string
+    avatar: string
     // 可以根据需要添加更多作者字段
 }
 
