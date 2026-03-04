@@ -82,9 +82,13 @@ WSGI_APPLICATION = "blog_backend.wsgi.application"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'demo_blog',      # 数据库名
+        'USER': 'root',     # MySQL 用户名
+        'PASSWORD': 'A52951718',  # MySQL 密码
+        'HOST': 'localhost',               # 数据库服务器地址（默认本地）
+        'PORT': '3306',                    # MySQL 默认端口
     }
 }
 
