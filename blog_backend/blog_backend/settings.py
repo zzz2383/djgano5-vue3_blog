@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',  # 跨域支持
     #app
     'users',
+    'articles',
 ]
 
 MIDDLEWARE = [
