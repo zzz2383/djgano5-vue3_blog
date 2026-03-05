@@ -80,11 +80,11 @@ blog_djagno5+vue3/
 
 • MySQL 8.0
 
-后端启动
+# 后端启动
 
 # 克隆项目
 git clone <repository-url>
-cd blog_djagno5+vue3/backend
+cd blog_djagno5+vue3/blog_backend
 
 # 创建虚拟环境
 python -m venv venv
@@ -105,7 +105,7 @@ python manage.py createsuperuser
 python manage.py runserver
 
 
-前端启动
+# 前端启动
 
 cd ../frontend
 
