@@ -117,7 +117,7 @@ python manage.py runserver
 
 # 前端启动
 ```
-cd ../frontend
+cd ../blog_frontend
 ```
 # 安装依赖
 ```
