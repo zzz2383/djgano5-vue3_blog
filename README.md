@@ -82,13 +82,12 @@ blog_djagno5+vue3/
 
 # 后端启动
 
-# 克隆项目
 ```
-git clone <repository-url>
-cd blog_djagno5+vue3/blog_backend
+终端进入blog_djagno5+vue3/blog_backend
 ```
 # 创建虚拟环境
 ```
+终端输入
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate    # Windos
