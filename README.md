@@ -83,40 +83,46 @@ blog_djagno5+vue3/
 # 后端启动
 
 # 克隆项目
+```
 git clone <repository-url>
 cd blog_djagno5+vue3/blog_backend
-
+```
 # 创建虚拟环境
+```
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate    # Windos
-
+```
 # 安装依赖
+```
 pip install -r requirements.txt
-
+```
 # 数据库迁移
+```
 python manage.py makemigrations
 python manage.py migrate
-
+```
 # 创建超级用户
+```
 python manage.py createsuperuser
-
+```
 # 运行开发服务器
+```
 python manage.py runserver
-
+```
 
 # 前端启动
-
+```
 cd ../frontend
-
+```
 # 安装依赖
+```
 npm install
-
+```
 # 开发模式运行
+```
 npm run dev
-
-# 构建生产版本
-npm run build
+```
 
 
 🔧 配置说明
