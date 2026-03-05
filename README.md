@@ -81,13 +81,13 @@ blog_djagno5+vue3/
 • MySQL 8.0
 
 # 后端启动
-
+在文件根目录进入终端，然后输入
 ```
-终端进入blog_djagno5+vue3/blog_backend
+cd blog_backend
 ```
 # 创建虚拟环境
-```
 终端输入
+```
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate    # Windos
@@ -96,15 +96,20 @@ venv\Scripts\activate    # Windos
 ```
 pip install -r requirements.txt
 ```
-# 数据库迁移
+# 修改blog_backend/blog_backend/settings.py（对应自己的配置）
 ```
-python manage.py makemigrations
-python manage.py migrate
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'blog_django5+vue3',      # 数据库名
+        'USER': 'root',     # MySQL 用户名
+        'PASSWORD': 'root',  # MySQL 密码
+        'HOST': 'localhost',               # 数据库服务器地址（默认本地）
+        'PORT': '3306',                    # MySQL 默认端口
+    }
+}
 ```
-# 创建超级用户
-```
-python manage.py createsuperuser
-```
+# 需要自己创建数据库 blog_django5+vue3（对应上面设置的数据库名字）
 # 运行开发服务器
 ```
 python manage.py runserver
@@ -126,15 +131,11 @@ npm run dev
 
 🔧 配置说明
 
-后端配置
+配置
 
 1. 根据需要修改数据库配置，默认用户与密码都为root
 2. 已经设置默认后端基础URL  http://localhost:8000
 3. 浏览http://localhost:8000/swagger/  查看API接口
-
-前端配置
-
-1. 在api中已经设置默认后端基础URL  http://localhost:8000
 
 
 主要 API 端点
